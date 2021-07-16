@@ -4,22 +4,28 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 import pandas as pd
 import argparse as ap
-from operator import itemgetter
+#from operator import itemgetter
+import time
+from bs4 import BeautifulSoup
+import csv
+import requests
 
 
+sector_list = ["Basic Materials","Communication Services","Consumer Cyclical","Consumer Defensive","Energy","Financial Services","Healthcare","Industrials","Real Estate","Technology","Utilities"]
 
-sector_list = ["Consumer Cyclical","Consumer Defensive","Energy","Financials","Health Care","Industrials","Information Technology","Materials","Real Estate","Comm Services","Utilities"]
 
-  
 
     
-def select_sector():
+# def select_sector():
   
-    for ch in range(len(sector_list)):
-       print("#"+str(ch)+" "+sector_list[ch])
+#     for ch in range(len(sector_list)):
+#        print("#"+str(ch)+" "+sector_list[ch])
 
-    Sector_no= int(input("Enter the sector you want to serch for"))
-    return sector_list[Sector_no]
+#     Sector_no= int(input("Enter the sector you want to serch for"))
+#     ret_str =  sector_list[Sector_no]
+#     ret_str=ret_str.lower()
+#     ret_str = "ms_"+ret_str.replace(" ","_")
+#     return ret_str
     
 
 def select_stocks():
@@ -42,33 +48,104 @@ def select_stocks():
      #need to define functions to represent historical data as well as selecting similiar stocks
     if args.also:
 
-        select_similiar_stocks(args.stocks,args.historical)
+        select_similiar_stocks(args.stocks,args.historical if args.historical else "ytd")
 
-    # if args.historical:
+    if args.historical:
 
-    #     preview_historical(args.stocks,args.historical)
+        preview_historical(args.stocks,args.historical)
 
 
-
+#=================================  OVERVIEW  ==========================================
 
 def select_stocks_overview2(*args,**kwargs):
+    # ISSUE : implement multithreading to stop the delays when more than 2 stocks are selected
+    print("in overview2")
+    time_dur1 = time.time()
     info_list=["sector","marketCap","country","trailingPE","currentPrice","52WeekChange","dividendYield"]
     arg_list = args[0]
+    
     stock_data=[]
     stock_data.append(["symbol"]+info_list)
     for i in arg_list:
         list1 = list(map(yf.Ticker(i).info.get,info_list))
         list1.insert(0,i)
         stock_data.append(list1)
-        
+
+    time_dur2 = time.time()
+    print(time_dur2-time_dur1)
+    print("done overview")   
     print(pd.DataFrame(stock_data))
 
+#================================  HISTORICAL PLOT  =====================================================
 
+def preview_historical(stocks,period="ytd"):
+    # generate a graph using pyplot of all the stocks , period may or maynot be defined
+    # -s to compare with similiar companies , -a (also) for comparing with other companies
+    
+    # import stock data using yfinance historical , store it in a list and print the plot.
+    stock_data=[]
+    print(stocks)
+    plt.figure(figsize=(10,8))
+    plt.grid(linestyle="-")
+    plt.xlabel("Date")
+    plt.ylabel("Share Price")
+    
+
+    for arg in stocks:
+        stock_data.append(arg)
+        arg = yf.Ticker(arg)
+        df = pd.DataFrame(arg.history(period=period))
+        #print(df.head())
+       
+        plt.plot(df.loc[:,"Close"])
+    plt.legend(stocks)    
+    plt.show()
+
+#============================================== SELECTING SIMILIAR STOCKS  =================================================
 def select_similiar_stocks(*args):
+    #downloading database of a sector from yfinance , sorting by market cap and selecting 
+    # top 5 stocks to compare with    
+    #trying to use beautiful soup 
+
+    args_list = args[0]
+    sector = yf.Ticker(args_list[0]).info["sector"]
+
+    #string manipulation
+    sector = sector.lower()
+    sector = "ms_"+sector.replace(" ","_")
+
+    url = "https://finance.yahoo.com/sector/"
+    
+    page = requests.get(url+sector)
+
+
+    soup = BeautifulSoup(page.content,"html.parser")
+    result = soup.find("table")
+    data=[]
+    #got the respective sector table , now gotta parse it properly using a parser
+    rows = result.find_all("tr")
+    for row in rows[:-1]:
+        if row == rows[0]:
+            cols = row.find_all("th")
+        else:
+            cols = row.find_all('td')
+        cols = [ele.text.strip() for ele in cols[:-1]]
+        data.append(cols)
+    
+    df = pd.DataFrame(data[1:],columns=data[0])
+    print("\n")
+    df.sort_values(by=[df.columns.values[7]],inplace=True,ascending=False)
+    print(df)
+    
+    #the data has been sorted , now just need to get 5 values 
     
 
-def select_stocks_overview(*args,**kwargs):
-    
+    #f = csv.writer(open("https://finance.yahoo.com/"))
+
+
+select_stocks()
+#select_sector()    
+
 # get ticker symbols for the stocks with some preset tickers and sort them in the order asked i.e. top_gainers , top_losers , new_high , new_low etc
 # get ticker data from yfinance api and append it to a dataframe and get some preset data from the
 # already present dataframes
@@ -82,26 +159,26 @@ def select_stocks_overview(*args,**kwargs):
 
 
 #test version : where we just sift data from all available dataframes for the given stocks
-    stock_data = []
-    info_list=["sector","marketCap","country","trailingPE","currentPrice","52WeekChange","dividendYield"]
-    n = len(info_list)+1
-    
-    list_args = args[0]
-
-   
-    for arg in list_args:
-        
-        stock_data.append(arg)
-        arg = yf.Ticker(str(arg))
-        for ch in info_list:
-            try:
-                stock_data.append(arg.info[str(ch)])
-            except:
-                stock_data.append("NaN")
-    df1 = pd.DataFrame([stock_data[i * n:(i + 1) * n] for i in range((len(stock_data) + n - 1) // n )],columns=["Symbol"]+info_list)
-    print(df1)
-    df1.to_csv("Sector-data\\stocks_overview.csv")
 
 
 
-select_stocks()
+
+"""
+=========================== For future purposes =====================================
+
+will implement historical in stocks overview using this :
+
+data = yf.download(
+        tickers = arg_list,
+        threads = True,
+        group_by="ticker",
+    )
+    data = data
+    for t in arg_list:
+        print(t)
+        print(data.loc[:,t].tail())
+
+    time_dur2 = time.time()
+    print(time_dur2-time_dur1)
+
+"""
