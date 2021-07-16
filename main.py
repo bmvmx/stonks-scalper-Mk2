@@ -9,6 +9,7 @@ import time
 from bs4 import BeautifulSoup
 import csv
 import requests
+import os
 
 
 sector_list = ["Basic Materials","Communication Services","Consumer Cyclical","Consumer Defensive","Energy","Financial Services","Healthcare","Industrials","Real Estate","Technology","Utilities"]
@@ -40,15 +41,16 @@ def select_stocks():
     
     if args.stocks:
         
-        select_stocks_overview2(args.stocks)
+        overview_table = select_stocks_overview2(args.stocks)
+
     else:    
     
-        select_stocks_overview2(preset_stock_list)
+        overview_table = select_stocks_overview2(preset_stock_list)
     
      #need to define functions to represent historical data as well as selecting similiar stocks
     if args.also:
 
-        select_similiar_stocks(args.stocks,args.historical if args.historical else "ytd")
+        select_similiar_stocks(args.stocks,args.historical if args.historical else "ytd",overview_table)
 
     if args.historical:
 
@@ -74,7 +76,9 @@ def select_stocks_overview2(*args,**kwargs):
     time_dur2 = time.time()
     print(time_dur2-time_dur1)
     print("done overview")   
-    print(pd.DataFrame(stock_data))
+    print(pd.DataFrame(stock_data[1:],columns=stock_data[0]))
+    return pd.DataFrame(stock_data[1:],columns=stock_data[0])
+
 
 #================================  HISTORICAL PLOT  =====================================================
 
@@ -102,6 +106,8 @@ def preview_historical(stocks,period="ytd"):
     plt.show()
 
 #============================================== SELECTING SIMILIAR STOCKS  =================================================
+
+
 def select_similiar_stocks(*args):
     #downloading database of a sector from yfinance , sorting by market cap and selecting 
     # top 5 stocks to compare with    
@@ -135,11 +141,36 @@ def select_similiar_stocks(*args):
     df = pd.DataFrame(data[1:],columns=data[0])
     print("\n")
     df.sort_values(by=[df.columns.values[7]],inplace=True,ascending=False)
-    print(df)
+    
     
     #the data has been sorted , now just need to get 5 values 
-    
+    df_head = df.head()
+    print(df_head)
 
+    #saving the sector data
+
+    path = os.path.join(os.getcwd(),"stonks-scalper-Mk2\\sector-tables\\")
+    df_head.to_csv(path+sector+".csv")
+
+    # ISSUE : the problem now is that the sector table doesn't have all the same fields as the stock table 
+    # thus have to come up with another function which selects the missing fields 
+
+    overview_table = args[2]
+    print(overview_table.columns.values,df_head.columns.values)
+    overview_table_cols = overview_table.columns.values
+    df_head_cols = df_head.columns.values
+    #residue_list = list(set([x.lower() for x in overview_table.columns.values]) and set([x.lower() for x in df_head.columns.values]))
+    residue_list = list(overview_table_cols)
+    for i in range(len(overview_table_cols)):
+        for j in range(i,len(df_head_cols)):
+            if overview_table_cols[i].lower() in [x.lower() for x in df_head_cols[j].split(" ")]:
+                residue_list.remove(overview_table_cols[i])
+
+    print(residue_list)
+
+    #retrieved teh missing columsn , now gotta use yfinance to get teh data again
+    # an improvement can be made by creating a funciton shared by both select_stocks_overview2 and select_similiar_stocks
+    # which is left for future rn , im too lazy 
     #f = csv.writer(open("https://finance.yahoo.com/"))
 
 
