@@ -167,6 +167,7 @@ def select_similiar_stocks(*args):
                 residue_list.remove(overview_table_cols[i])
 
     print(residue_list)
+    #for test commit
 
     #retrieved teh missing columsn , now gotta use yfinance to get teh data again
     # an improvement can be made by creating a funciton shared by both select_stocks_overview2 and select_similiar_stocks
