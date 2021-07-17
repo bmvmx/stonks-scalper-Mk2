@@ -1,6 +1,7 @@
 #====================================== STONKS SCALPER MK2  ===========================================================
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy.lib.utils import info
 import yfinance as yf
 import pandas as pd
 import argparse as ap
@@ -50,34 +51,47 @@ def select_stocks():
      #need to define functions to represent historical data as well as selecting similiar stocks
     if args.also:
 
-        select_similiar_stocks(args.stocks,args.historical if args.historical else "ytd",overview_table)
+        stocks = select_similiar_stocks(args.stocks,args.historical if args.historical else "ytd",overview_table)
 
     if args.historical:
 
-        preview_historical(args.stocks,args.historical)
+        preview_historical(stocks if stocks else args.stocks,args.historical)
 
 
 #=================================  OVERVIEW  ==========================================
 
 def select_stocks_overview2(*args,**kwargs):
     # ISSUE : implement multithreading to stop the delays when more than 2 stocks are selected
-    print("in overview2")
-    time_dur1 = time.time()
-    info_list=["sector","marketCap","country","trailingPE","currentPrice","52WeekChange","dividendYield"]
-    arg_list = args[0]
     
+    time_dur1 = time.time()
+    
+    df = stock_picker(args[0])
+    print(df)
+    return df
+    
+
+def stock_picker(*args,**kwargs):
+    #this new function will just select stocks passed to him as a list and also the sectors and give out a dataframe
+
+    stock_list = args[0]
+    if len(args)>1:
+        info_list = args[1]
+    else:
+        info_list=[]
+
     stock_data=[]
-    stock_data.append(["symbol"]+info_list)
-    for i in arg_list:
+    if info_list:
+        stock_data.append(info_list)
+       
+    else:
+        info_list = ["sector","marketCap","country","trailingPE","currentPrice","52WeekChange","dividendYield"]
+        stock_data.append(info_list)
+    for i in stock_list:
         list1 = list(map(yf.Ticker(i).info.get,info_list))
         list1.insert(0,i)
         stock_data.append(list1)
+    return pd.DataFrame(stock_data[1:],columns=["symbol",*stock_data[0]])
 
-    time_dur2 = time.time()
-    print(time_dur2-time_dur1)
-    print("done overview")   
-    print(pd.DataFrame(stock_data[1:],columns=stock_data[0]))
-    return pd.DataFrame(stock_data[1:],columns=stock_data[0])
 
 
 #================================  HISTORICAL PLOT  =====================================================
@@ -145,7 +159,7 @@ def select_similiar_stocks(*args):
     
     #the data has been sorted , now just need to get 5 values 
     df_head = df.head()
-    print(df_head)
+    # print(df_head)
 
     #saving the sector data
 
@@ -156,7 +170,7 @@ def select_similiar_stocks(*args):
     # thus have to come up with another function which selects the missing fields 
 
     overview_table = args[2]
-    print(overview_table.columns.values,df_head.columns.values)
+    #print(overview_table.columns.values,df_head.columns.values)
     overview_table_cols = overview_table.columns.values
     df_head_cols = df_head.columns.values
     #residue_list = list(set([x.lower() for x in overview_table.columns.values]) and set([x.lower() for x in df_head.columns.values]))
@@ -166,13 +180,25 @@ def select_similiar_stocks(*args):
             if overview_table_cols[i].lower() in [x.lower() for x in df_head_cols[j].split(" ")]:
                 residue_list.remove(overview_table_cols[i])
 
-    print(residue_list)
+    #print(residue_list)
+
     #for test commit
 
-    #retrieved teh missing columsn , now gotta use yfinance to get teh data again
+    #retrieved teh missing columns , now gotta use yfinance to get teh data again
     # an improvement can be made by creating a funciton shared by both select_stocks_overview2 and select_similiar_stocks
     # which is left for future rn , im too lazy 
-    #f = csv.writer(open("https://finance.yahoo.com/"))
+    
+    stock_list = list(df_head.iloc[:,0])
+    df = stock_picker(stock_list,residue_list)
+
+
+    #now merging the datframes 
+
+    df = pd.concat([overview_table,df])
+    df.reset_index(drop=True)
+    print(df)
+    return args_list+stock_list
+
 
 
 select_stocks()
