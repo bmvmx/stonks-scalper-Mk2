@@ -54,8 +54,10 @@ def select_stocks():
         stocks = select_similiar_stocks(args.stocks,args.historical if args.historical else "ytd",overview_table)
 
     if args.historical:
-
-        preview_historical(stocks if stocks else args.stocks,args.historical)
+        try:
+            preview_historical(stocks ,args.historical)
+        except:
+            preview_historical(args.stocks , args.historical)
 
 
 #=================================  OVERVIEW  ==========================================
