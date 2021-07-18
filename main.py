@@ -37,7 +37,9 @@ def select_stocks():
     parser = ap.ArgumentParser()
     parser.add_argument("--stocks",type=str,help="add all the stock ticker symbols after this " , nargs="*")
     parser.add_argument("--historical",type=str ,help="generate a historical data table  , usage : --historical (period e.g. 1mo/3mo/6mo/1y/2y/5y/ytd/max)")
-    parser.add_argument("--a",action="store_true",dest="also",help="-a used to add otehr companies in same sector")
+    parser.add_argument("--a",action="store_true",dest="also",help="-a used to add other companies in same sector")
+    parser.add_argument("--v",action="store_true",dest="valuation",help="-v gives all the ratios for the respective stocks")
+    parser.add_argument("--save",action="store_true",help="to save the dataset to a file")
     args = parser.parse_args()
     
     if args.stocks:
@@ -48,23 +50,29 @@ def select_stocks():
     
         overview_table = select_stocks_overview2(preset_stock_list)
     
-     #need to define functions to represent historical data as well as selecting similiar stocks
+     
     if args.also:
 
         stocks = select_similiar_stocks(args.stocks,args.historical if args.historical else "ytd",overview_table)
+    
+    if args.valuation:
+        try:
+            stock_valuation(stocks)
+        except:
+            stock_valuation(args.stocks)
 
     if args.historical:
         try:
             preview_historical(stocks ,args.historical)
         except:
             preview_historical(args.stocks , args.historical)
-
+    
 
 #=================================  OVERVIEW  ==========================================
 
 def select_stocks_overview2(*args,**kwargs):
     # ISSUE : implement multithreading to stop the delays when more than 2 stocks are selected
-    
+
     time_dur1 = time.time()
     
     df = stock_picker(args[0])
@@ -73,7 +81,8 @@ def select_stocks_overview2(*args,**kwargs):
     
 
 def stock_picker(*args,**kwargs):
-    #this new function will just select stocks passed to him as a list and also the sectors and give out a dataframe
+    #this new function will just select stocks passed to him as a list and also the sectors/ratios/anything that can 
+    # be passed to info() and give out a dataframe
 
     stock_list = args[0]
     if len(args)>1:
@@ -203,8 +212,26 @@ def select_similiar_stocks(*args):
 
 
 
+
+#========================================= STOCK VALUATION ==============================================================
+
+def stock_valuation(*args):
+    ratios = ["currentRatio","quickRatio","priceToBook","shortRatio","forwardPE","pegRatio","ytdReturn","ebitda"]
+    stock_list = args[0]
+    df = stock_picker(stock_list,ratios)
+    print("\n")
+    print(df)
+
+
+#implementing save feature which saves the database to a file
+# def dataset_save(df):
+#     path = os.path.join(os.getcwd(),"stonks-scalper-Mk2\\sector-tables\\")
+#     df.to_csv(path+"recent_database"+".csv")
+
+
 select_stocks()
-#select_sector()    
+    
+
 
 # get ticker symbols for the stocks with some preset tickers and sort them in the order asked i.e. top_gainers , top_losers , new_high , new_low etc
 # get ticker data from yfinance api and append it to a dataframe and get some preset data from the
@@ -240,5 +267,24 @@ data = yf.download(
 
     time_dur2 = time.time()
     print(time_dur2-time_dur1)
+
+"""
+
+"""
+
+============================== WHAT TO DO NEXT  ======================================
+
+ Now we need to create a comparison analysis for stocks
+    -stocks can vary in numbers from 1 at least to 10 from the sector
+    -different criteria like overview(sector , Industry ,Market Cap , Volume etc)
+    -valuation(all teh diff ratios)
+    -financial(dividends , ROE , ROA , ROI , Earnings)
+    -historical(historical price performance using a chart)
+    -sentiment from finbrain , yahoo finance etc(?)
+
+    from this list , we've done the first task and second
+    now for the valuation ,financial , historical(done) , sentiment
+
+
 
 """
