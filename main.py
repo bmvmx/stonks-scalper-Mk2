@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy.lib.utils import info
 import yfinance as yf
+import  yahoo_fin.stock_info as si
 import pandas as pd
 import argparse as ap
 #from operator import itemgetter
@@ -40,6 +41,8 @@ def select_stocks():
     parser.add_argument("--a",action="store_true",dest="also",help="-a used to add other companies in same sector")
     parser.add_argument("--v",action="store_true",dest="valuation",help="-v gives all the ratios for the respective stocks")
     parser.add_argument("--save",action="store_true",help="to save the dataset to a file")
+    parser.add_argument("--f",dest="financial",action="store_true",help="--f gives the financial data like the balance sheet , income statement etc")
+
     args = parser.parse_args()
     
     if args.stocks:
@@ -54,20 +57,22 @@ def select_stocks():
     if args.also:
 
         stocks = select_similiar_stocks(args.stocks,args.historical if args.historical else "ytd",overview_table)
-    
+    else:
+
+        stocks=[]
+
     if args.valuation:
-        try:
-            stock_valuation(stocks)
-        except:
-            stock_valuation(args.stocks)
+        
+        stock_valuation(stocks if stocks else args.stocks)
 
     if args.historical:
-        try:
-            preview_historical(stocks ,args.historical)
-        except:
-            preview_historical(args.stocks , args.historical)
+        
+        preview_historical(stocks if stocks else args.stocks,args.historical)
+     
     
-
+    if args.financial:
+        
+        stock_financial(stocks if stocks else args.stocks)
 #=================================  OVERVIEW  ==========================================
 
 def select_stocks_overview2(*args,**kwargs):
@@ -223,6 +228,23 @@ def stock_valuation(*args):
     print(df)
 
 
+def stock_financial(*args):
+    stock_list = args[0]
+    df = pd.DataFrame()
+
+    for ch in stock_list:
+        if not df.empty:
+
+            balance_sheet = si.get_balance_sheet(ch)
+        else:
+            df = si.get_balance_sheet(ch)
+            continue
+        df = pd.concat([si.get_balance_sheet("MGM").iloc[:,1],si.get_balance_sheet("LVS").iloc[:,1]],axis=1)
+        df.columns = stock_list
+    print(df)
+    #added teh balance sheet functionality , now gotta add income statement and a ratio one
+
+    
 #implementing save feature which saves the database to a file
 # def dataset_save(df):
 #     path = os.path.join(os.getcwd(),"stonks-scalper-Mk2\\sector-tables\\")
