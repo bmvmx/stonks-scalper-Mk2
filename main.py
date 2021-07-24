@@ -9,7 +9,8 @@ import argparse as ap
 #from operator import itemgetter
 import time
 from bs4 import BeautifulSoup
-import csv
+
+from tabulate import tabulate
 import requests
 import os
 
@@ -39,9 +40,9 @@ def select_stocks():
     parser.add_argument("--stocks",type=str,help="add all the stock ticker symbols after this " , nargs="*")
     parser.add_argument("--historical",type=str ,help="generate a historical data table  , usage : --historical (period e.g. 1mo/3mo/6mo/1y/2y/5y/ytd/max)")
     parser.add_argument("--a",action="store_true",dest="also",help="-a used to add other companies in same sector")
-    parser.add_argument("--v",action="store_true",dest="valuation",help="-v gives all the ratios for the respective stocks")
+    parser.add_argument("--v",action="store_true",dest="valuation",help="-v gives all the ratios for the respective stocks ")
     parser.add_argument("--save",action="store_true",help="to save the dataset to a file")
-    parser.add_argument("--f",dest="financial",action="store_true",help="--f gives the financial data like the balance sheet , income statement etc")
+    parser.add_argument("--f",dest="financial",type=str,help="--f gives the financial data like the balance sheet , income statement etc  , bs - balance sheet , is - incomestatement , cs - cash flow")
 
     args = parser.parse_args()
     
@@ -72,7 +73,7 @@ def select_stocks():
     
     if args.financial:
         
-        stock_financial(stocks if stocks else args.stocks)
+        stock_financial(stocks if stocks else args.stocks,args.financial)
 #=================================  OVERVIEW  ==========================================
 
 def select_stocks_overview2(*args,**kwargs):
@@ -230,19 +231,35 @@ def stock_valuation(*args):
 
 def stock_financial(*args):
     stock_list = args[0]
+    options={"bs":"get_balance_sheet","is":"get_income_statement","cs":"get_cash_flow"}
+    key = args[1]
+    
+    
+    
     df = pd.DataFrame()
 
     for ch in stock_list:
+        str_method = "si.{}('{}')".format(options[key],ch)
+        print(str_method)
+        
         if not df.empty:
 
-            balance_sheet = si.get_balance_sheet(ch)
+            f_data = eval(str_method)
+            df = pd.concat([df.iloc[:,1],f_data.iloc[:,1]],axis=1)
         else:
-            df = si.get_balance_sheet(ch)
+            df =  eval(str_method)
             continue
-        df = pd.concat([si.get_balance_sheet("MGM").iloc[:,1],si.get_balance_sheet("LVS").iloc[:,1]],axis=1)
-        df.columns = stock_list
+        
+    df.columns = stock_list
+    pd.options.display.float_format = '{:,.2f}'.format
     print(df)
-    #added teh balance sheet functionality , now gotta add income statement and a ratio one
+    
+
+
+    #gotta print the table in a better format
+    #issue : can either print data in a pretty table format or can format the data in a better way
+
+    #added the balance sheet functionality , now gotta add income statement and a ratio one
 
     
 #implementing save feature which saves the database to a file
