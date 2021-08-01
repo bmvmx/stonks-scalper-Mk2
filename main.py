@@ -1,6 +1,7 @@
 #====================================== STONKS SCALPER MK2  ===========================================================
 import numpy as np
 import matplotlib.pyplot as plt
+import io
 from numpy.lib.utils import info
 import yfinance as yf
 import  yahoo_fin.stock_info as si
@@ -11,6 +12,7 @@ import time
 from bs4 import BeautifulSoup
 
 from tabulate import tabulate
+import feather
 import requests
 import os
 
@@ -240,20 +242,30 @@ def stock_financial(*args):
 
     for ch in stock_list:
         str_method = "si.{}('{}')".format(options[key],ch)
-        print(str_method)
+
         
         if not df.empty:
 
             f_data = eval(str_method)
-            df = pd.concat([df.iloc[:,1],f_data.iloc[:,1]],axis=1)
+            df = pd.concat([df,f_data.iloc[:,1]],axis=1)
+           
         else:
             df =  eval(str_method)
+            df = df.iloc[:,1]
             continue
         
     df.columns = stock_list
     pd.options.display.float_format = '{:,.2f}'.format
-    print(df)
+    #print(df)
+
+    sector = yf.Ticker(stock_list[0]).info["sector"]
+    path = os.path.join(os.getcwd(),f"stonks-scalper-Mk2\\sector-tables\\{str(options[key])}-{ str(sector) }.csv ")
     
+
+    df.reset_index(drop=False).to_feather(path)
+    
+    print(pd.read_feather(path))
+    df.to_csv(path)
 
 
     #gotta print the table in a better format
